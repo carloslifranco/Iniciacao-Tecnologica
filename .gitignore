@@ -1,0 +1,11 @@
+data/*
+!data/README.md
+
+checkpoints/
+outputs/
+wandb/
+.env
+.venv/
+venv
+__pycache__/
+.ipynb_checkpoints/
