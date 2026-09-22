@@ -1,0 +1,13 @@
+experiment: #agrupa informações gerais sobre o experimento
+  name: vae_fashion_mnist_v1
+  seed: 42
+
+data: #descrevendo os dados utilizados 
+  dataset: fashion_mnist #ainda não sei se utilizarei esse 
+  image_size: 32
+  channels: 1
+
+training: #paramentros de treinamento
+  epochs: 10
+  batch_size: 64
+  learning_rate: 0.0002
