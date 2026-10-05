@@ -1,13 +1,46 @@
-experiment: #agrupa informações gerais sobre o experimento
-  name: vae_fashion_mnist_v1
+experiment:
+  name: fashion_mnist_models
   seed: 42
 
-data: #descrevendo os dados utilizados 
-  dataset: fashion_mnist #ainda não sei se utilizarei esse 
-  image_size: 32
+data:
+  dataset: fashion_mnist
+  image_size: 28
   channels: 1
+  samples: 5000
 
-training: #paramentros de treinamento
+training:
   epochs: 10
   batch_size: 64
   learning_rate: 0.0002
+
+models:
+  vae:
+    learning_rate: 0.001
+    latent_dim: 20
+    samples: 64
+  gan:
+    learning_rate: 0.0002
+    latent_dim: 64
+    samples: 64
+  pixelcnn:
+    learning_rate: 0.001
+    hidden_channels: 64
+    samples: 8
+  normalizing_flow:
+    learning_rate: 0.0005
+    hidden_dim: 512
+    coupling_layers: 6
+    samples: 64
+  diffusion:
+    learning_rate: 0.0002
+    timesteps: 100
+    channels: 32
+    samples: 16
+  latent_diffusion:
+    learning_rate: 0.0002
+    autoencoder_learning_rate: 0.001
+    autoencoder_epochs: 10
+    latent_channels: 4
+    timesteps: 100
+    channels: 32
+    samples: 16

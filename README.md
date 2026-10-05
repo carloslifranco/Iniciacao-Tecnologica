@@ -68,15 +68,38 @@ Após essa validação, o pipeline será adaptado para radiografias de tórax.
 
 | Família | Implementação | Situação |
 |---|---|---|
-| Autorregressivo | PixelCNN | Planejada |
-| VAE | VAE convolucional | Planejada |
-| GAN | DCGAN | Planejada |
-| Difusão | DDPM com U-Net | Planejada |
-| Difusão latente | LDM condicionado | Etapa final |
+| VAE | VAE MLP e autoencoder convolucional para o espaço latente | Implementação didática |
+| GAN | DCGAN | Implementação didática |
+| Autorregressivo | PixelCNN | Implementação didática |
+| Normalizing Flow | RealNVP com acoplamentos afins | Implementação didática |
+| Difusão | DDPM com preditor convolucional de ruído | Implementação didática |
+| Difusão latente | Autoencoder convolucional + DDPM latente | Implementação didática |
 
 As implementações iniciais possuem finalidade didática. Elas não representam
 reproduções integrais dos modelos originais nem sistemas preparados para uso
 clínico.
+
+### Executar os experimentos didáticos
+
+Com o ambiente virtual do projeto ativo, execute um modelo por vez:
+
+```powershell
+python scripts\train_vae.py
+python scripts\train_gan.py
+python scripts\train_autoregressive.py
+python scripts\train_normalizing_flow.py
+python scripts\train_diffusion.py
+python scripts\train_latent_diffusion.py
+```
+
+Todos usam Fashion-MNIST, as mesmas 5.000 imagens de treino, a semente definida
+em `configs/baseline.yml` e salvam amostras e checkpoints em subpastas
+independentes de `outputs/`. A configuração contém épocas, batch size e
+parâmetros específicos de cada família. Para um teste rápido, os scripts
+aceitam, por exemplo, `--epochs 1 --samples 128 --batch-size 16`; `--samples`
+limita a quantidade de imagens de treino usada nessa execução. Para reduzir o
+número de imagens geradas durante um teste, use também
+`--generated-samples 1`.
 
 ## Aplicações médicas investigadas
 
