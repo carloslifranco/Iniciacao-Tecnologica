@@ -92,14 +92,89 @@ python scripts\train_diffusion.py
 python scripts\train_latent_diffusion.py
 ```
 
-Todos usam Fashion-MNIST, as mesmas 5.000 imagens de treino, a semente definida
-em `configs/baseline.yml` e salvam amostras e checkpoints em subpastas
-independentes de `outputs/`. A configuração contém épocas, batch size e
+Todos usam Fashion-MNIST e a quantidade de imagens de treino definida em
+`data.samples` de `configs/baseline.yml` (atualmente 60.000). Cada execução
+cria uma pasta exclusiva em `outputs/<modelo>/<identificador>/`, com data e
+hora UTC e um sufixo aleatório. A configuração contém épocas, batch size e
 parâmetros específicos de cada família. Para um teste rápido, os scripts
 aceitam, por exemplo, `--epochs 1 --samples 128 --batch-size 16`; `--samples`
 limita a quantidade de imagens de treino usada nessa execução. Para reduzir o
 número de imagens geradas durante um teste, use também
 `--generated-samples 1`.
+
+### Registro dos experimentos
+
+Todos os scripts registram a configuração original, a configuração com os
+argumentos do terminal aplicados, o ambiente, a identificação dos dados
+selecionados e uma cópia do código. Nesta primeira etapa, o registro de
+arquitetura, perdas, tempos e estado da execução está integrado ao script
+de **difusão**. Os outros modelos ainda não registram esses itens e deixam
+o estado do registro como `prepared`.
+
+Para conferir o fluxo com uma execução curta:
+
+```powershell
+python scripts\train_diffusion.py --epochs 2 --samples 128 --batch-size 16 --generated-samples 4 --seed 42 --deterministic
+```
+
+Esse comando valida o funcionamento; duas épocas com 128 imagens não são
+evidência suficiente de qualidade da geração. Para o treinamento com os
+valores do baseline:
+
+```powershell
+python scripts\train_diffusion.py --deterministic
+```
+
+A pasta impressa no terminal conterá:
+
+| Arquivo/pasta | Conteúdo |
+|---|---|
+| `config_original.yml` | Cópia do YAML antes dos argumentos do terminal |
+| `config_effective.yml` | Valores utilizados de dados e treinamento e opções do modelo selecionado |
+| `metadata.json` | Sementes, dispositivo, versões, seleção e hash dos dados, arquitetura, parâmetros do otimizador, duração e estado da execução |
+| `architecture.txt` | Estrutura da rede de difusão |
+| `metrics.csv` | MSE de ruído e tempos por época |
+| `samples_epoch_XX.png` | Imagens geradas ao final de cada época |
+| `checkpoint.pt` | Última época concluída, pesos, otimizador e argumentos para reconstruir o modelo |
+| `source/` | Cópia dos scripts, módulos de `src` e `pyproject.toml`, incluindo alterações locais |
+
+O MSE é ponderado pela quantidade de imagens em cada lote, inclusive no
+último lote incompleto. Ele mede previsão de ruído, não qualidade visual.
+`train_seconds` mede o treinamento; `sampling_seconds`, a geração e gravação
+do PNG; `elapsed_seconds`, o tempo acumulado incluindo checkpoints. A
+duração total em `metadata.json` começa na criação do registro e não inclui
+o carregamento/download inicial do dataset. O histórico é gravado a cada
+época; não há um gráfico automático nesta etapa.
+
+A difusão usa a semente de treinamento para inicializar Python, NumPy,
+PyTorch e um gerador independente para a ordem dos lotes. As amostras de
+acompanhamento usam `seed + 1`, repetindo a mesma sequência aleatória em
+cada época sem alterar os sorteios do treinamento. Isso ajuda a comparar
+a evolução visual. Essas amostras são de acompanhamento, não um conjunto
+independente para avaliação final.
+
+`--seed` substitui a semente do YAML. `--deterministic` ativa algoritmos
+determinísticos e pode interromper uma execução se uma operação não tiver
+implementação determinística no dispositivo. Também é possível definir
+`training.deterministic: true` no YAML. Mesmo assim, resultados idênticos
+entre versões de bibliotecas ou equipamentos diferentes não são garantidos.
+
+O checkpoint é atualizado após cada época de difusão, dentro da pasta
+daquela execução. Uma falha ou interrupção por teclado é registrada no
+metadado e propagada ao terminal; encerramentos forçados do processo podem
+deixar o estado como `running`. Ainda não há retomada automática de
+treinamento nem um comando separado de inferência. O checkpoint sozinho
+não contém todos os estados aleatórios necessários para uma retomada exata.
+As saídas antigas diretamente em `outputs/diffusion/` são preservadas.
+
+Os registros e cópias locais estão em `outputs/`, ignorado pelo Git.
+Para arquivar um resultado da pesquisa, preserve a pasta completa da execução.
+
+Os testes de integração usam dados artificiais pequenos e CPU, sem download:
+
+```powershell
+python -m unittest discover -s tests -v
+```
 
 ## Aplicações médicas investigadas
 

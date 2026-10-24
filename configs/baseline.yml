@@ -6,10 +6,10 @@ data:
   dataset: fashion_mnist
   image_size: 28
   channels: 1
-  samples: 5000
+  samples: 60000
 
 training:
-  epochs: 10
+  epochs: 50
   batch_size: 64
   learning_rate: 0.0002
 
@@ -33,8 +33,8 @@ models:
     samples: 64
   diffusion:
     learning_rate: 0.0002
-    timesteps: 100
-    channels: 32
+    timesteps: 200
+    channels: 64
     samples: 16
   latent_diffusion:
     learning_rate: 0.0002
