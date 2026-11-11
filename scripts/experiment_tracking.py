@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import os
 import platform
 import shutil
 import sys
@@ -50,6 +51,7 @@ class RunRecorder:
                 "deterministic_algorithms": torch.are_deterministic_algorithms_enabled(),
                 "cudnn_benchmark": torch.backends.cudnn.benchmark,
                 "cudnn_deterministic": torch.backends.cudnn.deterministic,
+                "cublas_workspace_config": os.environ.get("CUBLAS_WORKSPACE_CONFIG"),
                 "note": "Seeds do not guarantee identical results across hardware or library versions.",
             },
         }

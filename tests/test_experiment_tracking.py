@@ -103,6 +103,7 @@ class ExperimentTrackingTests(unittest.TestCase):
         self.assertEqual(metadata["completed_epochs"], 2)
         self.assertEqual(metadata["dataset"]["available_samples"], 7)
         self.assertEqual(metadata["model"]["constructor"]["channels"], 8)
+        self.assertEqual(metadata["model"]["constructor"]["timesteps"], 4)
         self.assertGreater(metadata["elapsed_seconds"], 0)
         self.assertTrue((path / "source/scripts/diffusion_model.py").is_file())
         self.assertTrue((path / "architecture.txt").is_file())
@@ -110,6 +111,8 @@ class ExperimentTrackingTests(unittest.TestCase):
         self.assertEqual(len(self.metrics(path)), 2)
         checkpoint = torch.load(path / "checkpoint.pt", weights_only=True)
         self.assertEqual(checkpoint["epochs"], 2)
+        self.assertEqual(checkpoint["timesteps"], 4)
+        self.assertEqual(len(checkpoint["model"]["betas"]), 4)
         self.assertIn("optimizer", checkpoint)
         self.assertTrue((path / "samples_epoch_02.png").is_file())
 

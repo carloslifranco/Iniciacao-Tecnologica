@@ -10,7 +10,7 @@ from train_utils import save_checkpoint, save_samples, start_experiment
 def main() -> None:
     experiment = start_experiment("diffusion")
     with experiment.recorder.track():
-        timesteps = int(experiment.model_config.get("t      imesteps", 100))
+        timesteps = int(experiment.model_config.get("timesteps", 100))
         sample_count = int(experiment.model_config.get("samples", 64))
         constructor = {
             "timesteps": timesteps,

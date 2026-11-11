@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
 import random
 from dataclasses import dataclass
 from pathlib import Path
@@ -108,6 +109,10 @@ def start_experiment(model_name: str) -> Experiment:
         if args.deterministic is not None
         else bool(training_config.get("deterministic", False))
     )
+    if deterministic:
+        # cuBLAS (camadas lineares na GPU) só é determinístico com esta variável,
+        # definida antes da primeira operação CUDA; sem ela o PyTorch gera erro.
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     torch.use_deterministic_algorithms(deterministic)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = deterministic
