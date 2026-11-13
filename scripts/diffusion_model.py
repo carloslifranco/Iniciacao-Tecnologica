@@ -109,12 +109,47 @@ class DenoisingDiffusion(nn.Module):
         predicted_noise = self.denoiser(noisy_images, timestep_indices)
         return F.mse_loss(predicted_noise, noise)
 
+    def denoise_step(
+        self,
+        images: torch.Tensor,
+        index: int,
+        predicted_noise: torch.Tensor,
+        clip_denoised: bool = False,
+    ) -> torch.Tensor:
+        """Um passo da geração: remove parte do ruído de ``images`` no passo ``index``.
+
+        Com ``clip_denoised``, a estimativa da imagem limpa (x0) é limitada a
+        [-1, 1] antes do passo, como no DDPM original. Isso impede que erros da
+        rede se acumulem ao longo dos passos e saturem a imagem. Só faz sentido
+        quando os dados estão em [-1, 1] (não vale para latentes).
+        """
+        beta = self.betas[index]
+        alpha = self.alphas[index]
+        alpha_bar = self.alpha_bars[index]
+        if not clip_denoised:
+            images = (images - beta / torch.sqrt(1 - alpha_bar) * predicted_noise) / torch.sqrt(alpha)
+        else:
+            clean = (images - (1 - alpha_bar).sqrt() * predicted_noise) / alpha_bar.sqrt()
+            clean = clean.clamp(-1, 1)
+            if index == 0:
+                return clean
+            # Média da distribuição do passo anterior, calculada a partir de x0.
+            alpha_bar_prev = self.alpha_bars[index - 1]
+            images = (
+                beta * alpha_bar_prev.sqrt() * clean
+                + (1 - alpha_bar_prev) * alpha.sqrt() * images
+            ) / (1 - alpha_bar)
+        if index > 0:
+            images = images + self.posterior_variance[index].sqrt() * torch.randn_like(images)
+        return images
+
     @torch.no_grad()
     def sample(
         self,
         sample_count: int,
         device: torch.device,
         spatial_size: int = 28,
+        clip_denoised: bool = False,
     ) -> torch.Tensor:
         images = torch.randn(
             sample_count,
@@ -127,11 +162,6 @@ class DenoisingDiffusion(nn.Module):
             timesteps = torch.full(
                 (sample_count,), index, device=device, dtype=torch.long
             )
-            beta = self.betas[index]
-            alpha = self.alphas[index]
-            alpha_bar = self.alpha_bars[index]
             predicted_noise = self.denoiser(images, timesteps)
-            images = (images - beta / torch.sqrt(1 - alpha_bar) * predicted_noise) / torch.sqrt(alpha)
-            if index > 0:
-                images = images + self.posterior_variance[index].sqrt() * torch.randn_like(images)
+            images = self.denoise_step(images, index, predicted_noise, clip_denoised)
         return images

@@ -12,6 +12,8 @@ def main() -> None:
     with experiment.recorder.track():
         timesteps = int(experiment.model_config.get("timesteps", 100))
         sample_count = int(experiment.model_config.get("samples", 64))
+        # Ausente nas configurações antigas: False reproduz o amostrador original.
+        clip_denoised = bool(experiment.model_config.get("clip_denoised", False))
         constructor = {
             "timesteps": timesteps,
             "input_channels": 1,
@@ -24,6 +26,7 @@ def main() -> None:
         recorder.metadata["sampling"] = {
             "seed": sampling_seed,
             "samples_per_epoch": sample_count,
+            "clip_denoised": clip_denoised,
             "spatial_size": 28,
             "same_random_sequence_each_epoch": True,
             "isolated_from_training_rng": True,
@@ -69,7 +72,9 @@ def main() -> None:
                 torch.random.default_generator.manual_seed(sampling_seed)
                 if experiment.device.type == "cuda":
                     torch.cuda.manual_seed(sampling_seed)
-                generated = model.sample(sample_count, experiment.device)
+                generated = model.sample(
+                    sample_count, experiment.device, clip_denoised=clip_denoised
+                )
                 if not torch.isfinite(generated).all().item():
                     raise FloatingPointError(f"Amostras não finitas na época {epoch}")
                 save_samples(
@@ -86,6 +91,7 @@ def main() -> None:
                     "optimizer": optimizer.state_dict(),
                     "model_constructor": constructor,
                     "timesteps": timesteps,
+                    "clip_denoised": clip_denoised,
                     "epochs": epoch,
                     "seed": experiment.seed,
                     "sampling_seed": sampling_seed,

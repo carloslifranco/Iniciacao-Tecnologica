@@ -73,6 +73,7 @@ Após essa validação, o pipeline será adaptado para radiografias de tórax.
 | Autorregressivo | PixelCNN | Implementação didática |
 | Normalizing Flow | RealNVP com acoplamentos afins | Implementação didática |
 | Difusão | DDPM com preditor convolucional de ruído | Implementação didática |
+| Difusão condicional | DDPM condicionado por classe + classifier-free guidance | Implementação didática |
 | Difusão latente | Autoencoder convolucional + DDPM latente | Implementação didática |
 
 As implementações iniciais possuem finalidade didática. Elas não representam
@@ -89,6 +90,7 @@ python scripts\train_gan.py
 python scripts\train_autoregressive.py
 python scripts\train_normalizing_flow.py
 python scripts\train_diffusion.py
+python scripts\train_conditional_diffusion.py
 python scripts\train_latent_diffusion.py
 ```
 
@@ -107,9 +109,9 @@ número de imagens geradas durante um teste, use também
 Todos os scripts registram a configuração original, a configuração com os
 argumentos do terminal aplicados, o ambiente, a identificação dos dados
 selecionados e uma cópia do código. Nesta primeira etapa, o registro de
-arquitetura, perdas, tempos e estado da execução está integrado ao script
-de **difusão**. Os outros modelos ainda não registram esses itens e deixam
-o estado do registro como `prepared`.
+arquitetura, perdas, tempos e estado da execução está integrado aos scripts
+de **difusão** e **difusão condicional**. Os outros modelos ainda não
+registram esses itens e deixam o estado do registro como `prepared`.
 
 Para conferir o fluxo com uma execução curta:
 
@@ -163,12 +165,79 @@ O checkpoint é atualizado após cada época de difusão, dentro da pasta
 daquela execução. Uma falha ou interrupção por teclado é registrada no
 metadado e propagada ao terminal; encerramentos forçados do processo podem
 deixar o estado como `running`. Ainda não há retomada automática de
-treinamento nem um comando separado de inferência. O checkpoint sozinho
+treinamento. Para a difusão incondicional também não há um comando separado
+de inferência; a condicional tem um (veja abaixo). O checkpoint sozinho
 não contém todos os estados aleatórios necessários para uma retomada exata.
 As saídas antigas diretamente em `outputs/diffusion/` são preservadas.
 
 Os registros e cópias locais estão em `outputs/`, ignorado pelo Git.
 Para arquivar um resultado da pesquisa, preserve a pasta completa da execução.
+
+### Difusão condicional: escolher o que gerar
+
+A difusão incondicional gera peças aleatórias do Fashion-MNIST, sem
+controle sobre a classe. A versão condicional
+(`scripts/conditional_diffusion_model.py`) usa a mesma rede e o mesmo
+cronograma de ruído, mas o preditor também recebe a classe da imagem: um
+embedding da classe é somado ao embedding do passo de tempo. Na geração, a
+classe é escolhida por quem executa o modelo.
+
+Ela também usa *classifier-free guidance*. No treinamento, uma fração das
+imagens (`label_dropout`, 10% no baseline) é apresentada sem classe, e a
+mesma rede aprende a previsão condicional e a incondicional. Na geração,
+as duas são combinadas:
+
+```text
+ruído = ruído_sem_classe + guidance_scale × (ruído_com_classe − ruído_sem_classe)
+```
+
+`guidance_scale` igual a 1 usa só a previsão condicional; valores maiores
+(3 no baseline) deixam a classe mais evidente, com menos diversidade. Esse é
+o mecanismo previsto para condicionar radiografias por achados radiológicos.
+
+O treinamento é igual ao da difusão e grava os mesmos arquivos. As amostras
+de cada época têm uma linha por classe, na ordem dos rótulos;
+`--generated-samples` define quantas imagens por classe. O `metadata.json`
+registra também a contagem de imagens por classe e os parâmetros de
+condicionamento.
+
+```powershell
+python scripts\train_conditional_diffusion.py --deterministic
+```
+
+Para gerar classes específicas a partir de um checkpoint, troque
+`<identificador>` pelo nome da pasta impresso ao fim do treino (sem `< >`):
+
+```powershell
+python scripts\generate_conditional_diffusion.py outputs\conditional_diffusion\<identificador>\checkpoint.pt --classes tenis bota --per-class 8 --seed 0
+```
+
+Se o caminho não existir, o script lista os checkpoints mais recentes.
+
+As classes podem ser informadas pelo nome, com ou sem acento, ou pelo índice:
+0 `camiseta`, 1 `calca`, 2 `pulover`, 3 `vestido`, 4 `casaco`, 5 `sandalia`,
+6 `camisa`, 7 `tenis`, 8 `bolsa` e 9 `bota`. `--guidance-scale` substitui o
+valor do treinamento. A geração usa a limitação da imagem limpa por padrão,
+inclusive com checkpoints treinados antes dela; `--no-clip-denoised` a
+desliga (o arquivo recebe o sufixo `_semclip`). O PNG é salvo na pasta do
+checkpoint, com uma linha por classe, salvo se `--output` indicar outro
+caminho.
+
+### Limitação da imagem limpa (`clip_denoised`)
+
+Em cada passo da geração, a rede permite estimar a imagem limpa (x0). Com
+`clip_denoised: true`, essa estimativa é limitada a [-1, 1] antes do passo,
+como no DDPM original. Sem isso, os erros da rede se acumulam e as imagens
+saturam (quadrados todos brancos ou pretos); o guidance amplifica o efeito.
+Num checkpoint condicional de 50 épocas, a geração sem limitação saturou
+quase todas as classes, e a com limitação gerou as 10 classes reconhecíveis,
+sem novo treinamento.
+
+A opção vale para a difusão e para a difusão condicional e fica registrada
+em `metadata.json` (`sampling.clip_denoised`) e no checkpoint. O baseline a
+ativa nas duas; quando ausente do YAML, o padrão é `false`, que reproduz as
+execuções anteriores. A difusão latente não usa a opção, porque os latentes
+não ficam em [-1, 1].
 
 Os testes de integração usam dados artificiais pequenos e CPU, sem download:
 

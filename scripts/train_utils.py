@@ -195,9 +195,14 @@ def start_experiment(model_name: str) -> Experiment:
     )
 
 
-def save_samples(images: torch.Tensor, output_dir: Path, epoch: int) -> Path:
+def save_samples(
+    images: torch.Tensor,
+    output_dir: Path,
+    epoch: int,
+    nrow: int = 8,
+) -> Path:
     output_path = output_dir / f"samples_epoch_{epoch:02d}.png"
-    save_image(images.detach().cpu(), output_path, nrow=8)
+    save_image(images.detach().cpu(), output_path, nrow=nrow)
     print(f"Amostras salvas: {output_path}")
     return output_path
 

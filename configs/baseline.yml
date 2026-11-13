@@ -36,6 +36,15 @@ models:
     timesteps: 200
     channels: 64
     samples: 16
+    clip_denoised: true  # limita x0 a [-1, 1] na geração; evita imagens saturadas
+  conditional_diffusion:
+    learning_rate: 0.0002
+    timesteps: 200
+    channels: 64
+    samples: 8           # imagens por classe nas amostras de cada época
+    label_dropout: 0.1   # fração do treino sem classe (classifier-free guidance)
+    guidance_scale: 3.0  # 1 = sem guidance; maior = classe mais evidente
+    clip_denoised: true  # limita x0 a [-1, 1] na geração; evita imagens saturadas
   latent_diffusion:
     learning_rate: 0.0002
     autoencoder_learning_rate: 0.001
